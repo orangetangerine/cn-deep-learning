@@ -1,5 +1,7 @@
 import numpy as np
 import tensorflow as tf
+from distutils.version import LooseVersion
+
 from tensorflow.contrib import rnn
 
 
@@ -168,7 +170,7 @@ def test_get_inputs(get_inputs):
 
 def test_get_init_cell(get_init_cell):
     with tf.Graph().as_default():
-        test_batch_size_ph = tf.placeholder(tf.int32)
+        test_batch_size_ph = tf.placeholder(tf.int32, shape=[])
         test_rnn_size = 256
 
         cell, init_state = get_init_cell(test_batch_size_ph, test_rnn_size)
@@ -236,7 +238,7 @@ def test_build_nn(build_nn):
         test_embed_dim = 300
         test_rnn_layer_size = 2
         test_vocab_size = 27
-        test_cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(test_rnn_size)] * test_rnn_layer_size)
+        test_cell = rnn.MultiRNNCell([rnn.BasicLSTMCell(test_rnn_size) for _ in range(test_rnn_layer_size)])
 
         logits, final_state = build_nn(test_cell, test_rnn_size, test_input_data, test_vocab_size, test_embed_dim)
 
@@ -249,8 +251,12 @@ def test_build_nn(build_nn):
         # Check Shape
         assert logits.get_shape().as_list() == test_input_data_shape + [test_vocab_size], \
             'Outputs has wrong shape.  Found shape {}'.format(logits.get_shape())
-        assert final_state.get_shape().as_list() == [test_rnn_layer_size, 2, None, test_rnn_size], \
-            'Final state wrong shape.  Found shape {}'.format(final_state.get_shape())
+        if (tf.__version__ <= LooseVersion('1.1')): 
+            assert final_state.get_shape().as_list() == [test_rnn_layer_size, 2, None, test_rnn_size], \
+                'Final state wrong shape.  Found shape {}'.format(final_state.get_shape())
+        else:
+            assert final_state.get_shape().as_list() == [test_rnn_layer_size, 2, test_input_data_shape[0], test_rnn_size], \
+                'Fianl state wrong shape.  Found shape {}'.format(final_state.get_shape())
 
     _print_success_message()
 
